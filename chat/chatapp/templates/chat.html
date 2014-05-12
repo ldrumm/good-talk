@@ -1,0 +1,54 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<html>
+    <head>
+        {% block head %}
+        <meta charset="utf-8"/>
+        <!--[if lt IE 9]><script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7/html5shiv.js"></script><![endif]-->
+        {% block stylesheets %}
+            <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.0.3/css/bootstrap.css">
+        {% endblock %}
+        <title>{% block title %}Chat{% endblock %}</title>
+        {% endblock %}
+    </head>
+    <body>
+        
+        
+    <div class="container">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{message.tags}}">
+            <button class="close" data-dismiss="alert"><i class="fa fa-times"></i></button>
+            <p{% if message.tags %} class="{{ message.tags }}"{% endif %}><i class="fa fa-info-circle">&nbsp;{{ message }}</i></p>
+        </div>
+        {% endfor %}
+    {% endif %}
+    {% block body %}
+            <!-- body -->
+        <ul id="activeusers"><li>hello</li></ul>
+        <div class="highlight" id="chatwindow">
+        <!--messages appear here -->
+        
+            
+        </div>
+        <div class="well">
+            <textarea type="text" class="form-control" placeholder="Text input" id="chatinput"></textarea>
+        </div>
+    {% endblock %}
+    </div>
+        
+        
+        <footer class="footer">
+        {% block footer %}
+                <!-- footer block -->
+        {% endblock %}
+
+        {% block scripts %}
+            <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+            <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
+            <script src="{% static 'js/app.js' %}"></script>
+            <script> $(document).ready(function(){chatapp = chatmain();});</script>
+        {% endblock %}
+        </footer>
+    </body>
+</html>
