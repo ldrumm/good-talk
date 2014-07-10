@@ -4,6 +4,13 @@ from django.http import HttpResponse, HttpResponseForbidden
 
 import simplejson
 
+import queue
+
+class JSONResponse(HttpResponse):
+    def __init__(self, content, *args, **kwargs):
+        content = simplejson.dumps(content)
+        kwargs['content_type'] = 'application/json'
+        super(JSONResponse, self).__init__(content, *args, **kwargs)
 
 @csrf_exempt
 def home(request, *args, **kwargs):
@@ -16,36 +23,28 @@ def ajax_handler(request, *args, **kwargs):
         d = simplejson.loads(request.POST.get('request'))
     except simplejson.JSONDecodeError:
         return HttpResponseForbidden()
-    if d.get('cmd') == 'submit':
-        resp = post_message(d.get('data'), *args, **kwargs)
-        return HttpResponse(
-            simplejson.dumps({
-                'success': True,
-            })
-        )
-    if d.get('cmd') == 'update':
-        resp = long_poll_update_status(d.get('data'), *args, **kwargs)
-        return HttpResponse(
-            simplejson.dumps({
-                'success': resp is not None,
-                'msg':resp,
-                'timeout':resp is None,
-            })
-        )
-    return HttpResponseForbidden()
-
-def post_message(data, *args, **kwargs):
-    from queue import send_message
-    send_message('', data)
-
-def long_poll_update_status(data, timeout=20, **kwargs):
-    from queue import wait_message as get_message
-    from django.utils.html import escape
-    from django.utils.safestring import mark_for_escaping
-    timeout = timeout > 20 and 20 or timeout
-    timeout = timeout > 0 and timeout or 20
     try:
-        msg = str(get_message(timeout=timeout)[0])
-    except TypeError:
-        return None
-    return escape(msg)
+        subscriber = d['subscriber']
+    except KeyError:
+        return HttpResponseForbidden()
+    timeout = d.get('timeout', 30)
+    data = d.get('data')
+    
+    if d.get('command') == 'submit':
+        queue.send_message(subscriber=subscriber, message=simplejson.dumps(data))
+        return JSONResponse({'success': True})
+    
+    if d.get('command') == 'update':
+        try:
+            resp = queue.wait_message(subscriber=subscriber, block=True, timeout=timeout)
+            if resp[0] != subscriber:
+                raise SuspiciousOperation("Subscriber does not match returned message subscriber:%s:%s", resp, subscriber)
+            resp = resp[1]
+        except TypeError:
+            resp = None
+        return JSONResponse({
+            'success': resp is not None,
+            'data': (resp != None) and simplejson.loads(resp) or None,
+            'timeout': resp is None,
+        })
+    return HttpResponseForbidden()

@@ -24,15 +24,29 @@
         {% endfor %}
     {% endif %}
     {% block body %}
+        <form role="form">
+            <div class="form-group">
+                <label for="key">Enter a <em>strong</em> passphrase</label>
+                <input  class="form-control" id="key" type="password" placeholder="correct horse battery staple">
+            </div>
+            <div class="form-group">
+                <label for="room">Choose your chatoom name</label>
+                <input  class="form-control" id="room" placeholder="Hut 2">
+            </div>
+            <div class="form-group">
+                <label for="alias">Choose your Alias</label>
+                <input  class="form-control" id="alias" placeholder="NightHawk">
+            </div>
+        </form>
             <!-- body -->
-        <ul id="activeusers"><li>hello</li></ul>
-        <div class="highlight" id="chatwindow">
+        <ul id="activeusers"></ul>
+        <div class="highlight" id="chatWindow">
         <!--messages appear here -->
         
             
         </div>
         <div class="well">
-            <textarea type="text" class="form-control" placeholder="Text input" id="chatinput"></textarea>
+            <textarea type="text" class="form-control" placeholder="Text input" id="chatInput"></textarea>
         </div>
     {% endblock %}
     </div>
@@ -44,10 +58,16 @@
         {% endblock %}
 
         {% block scripts %}
+            <script src="//crypto-js.googlecode.com/svn/tags/3.1.2/build/rollups/aes.js"></script>
             <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
             <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
             <script src="{% static 'js/app.js' %}"></script>
-            <script> $(document).ready(function(){chatapp = chatmain();});</script>
+            <script> 
+            $(document).ready(function(){
+                chatapp = chatmain('#chatWindow', '#chatInput', '#key', '#room', '#alias');
+                }
+            );
+            </script>
         {% endblock %}
         </footer>
     </body>

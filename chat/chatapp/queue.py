@@ -1,7 +1,9 @@
+import gevent
 import zmq.green as zmq
 from django.conf import settings
 import Queue
 
+__all__ = ['Broadcaster', 'runserver', 'wait_message', 'send_message']
 
 class Broadcaster(object):
     def __init__(self, name, *args, **kwargs):
@@ -19,10 +21,6 @@ class Broadcaster(object):
         self.poller = zmq.Poller()
         self.poller.register(self.recv_sock, zmq.POLLIN)
         self.poller.register(self.pub_sock, zmq.POLLIN)
-   
-    def _publish(self, msg):
-        socks = dict(self.poller.poll())
-
 
     def _handle_next_msg(self):
         socks = dict(self.poller.poll())
@@ -35,72 +33,47 @@ class Broadcaster(object):
     def _worker_thread(self):
         from time import sleep
         import uuid
-        print("worker thread starting...")
+        print("zmq worker thread starting...")
         while True:
-            quit = None
-            try:
-                quit = self.quit_queue.get_nowait()
-                if quit:
-                    print "received quit"
-                    break
-            except Queue.Empty:
-                pass
             self._handle_next_msg()
     
     def start(self):
-        import threading
-        try:
-            if self.worker.is_alive():
-                raise RuntimeError("message worker thread is already running")
-        except AttributeError:
-            pass    
-            
-        self.worker = threading.Thread(target = self._worker_thread, )
-        self.worker.run()
-        print(worker)
+        self._worker_thread()
     
     def stop(self):
         self.quit_queue.put(1)
-#        try:
-#            self.worker.join()
-#        except AttributeError:
-#            pass
 
-def wait_message(subscriber='', timeout=10, block=True):
-    flags = not block and zmq.NOBLOCK or 0
-    timeout = timeout and (timeout * 1000) or -1
-    context = zmq.Context()
-    
-    socket = context.socket(zmq.SUB)
-    socket.connect(settings.ZMQ_PUB_ADDRESS)
-    socket.RCVTIMEO = timeout
-    socket.setsockopt(zmq.SUBSCRIBE, subscriber)
-    try:
-        message = socket.recv_multipart(flags=flags)
-        return message
-    except zmq.Again:
-        return None
-    finally:
-        socket.close()
-        context.destroy()
-    
-
-def send_message(message, subscriber=''):
-    context = zmq.Context()
-    
-    socket = context.socket(zmq.XREQ)
-    socket.connect(settings.ZMQ_SUB_ADDRESS)
-    socket.send_multipart([str(subscriber), str(message)])
-    
-    socket.close()
-    context.destroy()
-
-
-def runserver():
-    server = Broadcaster('none')
+def runserver(name):
+    server = Broadcaster(name)
     try:
         server.start()
     except KeyboardInterrupt:
         server.stop()
         print("Exiting...")
-        
+
+def wait_message(subscriber='', block=True, timeout=10):
+    context = zmq.Context()
+
+    socket = context.socket(zmq.SUB)
+    socket.connect(settings.ZMQ_PUB_ADDRESS)
+    socket.setsockopt(zmq.SUBSCRIBE, bytes(subscriber))
+    try:
+        c = gevent.spawn(socket.recv_multipart)
+        return c.get(block, timeout)
+    except gevent.Timeout:
+        return None
+    finally:
+        c.kill()
+        socket.close()
+        context.destroy()
+
+def send_message(subscriber='', message=''):
+    context = zmq.Context()
+    
+    socket = context.socket(zmq.XREQ)
+    socket.connect(settings.ZMQ_SUB_ADDRESS)
+    socket.send_multipart([bytes(subscriber), bytes(message)])
+    
+    socket.close()
+    context.destroy()
+
