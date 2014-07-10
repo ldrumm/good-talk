@@ -20,12 +20,16 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 SECRET_KEY = '-t-sz^gfgs3zc1-1&okrj%bdq!hm$rcby7f5zwbj2#p=waiq&u'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+try:
+    DEBUG = not os.environ['DEBUG'] == 'False'
+except:
+    DEBUG = True
+TEMPLATE_DEBUG = DEBUG
 
-TEMPLATE_DEBUG = True
+ALLOWED_HOSTS = ['*']
 
-ALLOWED_HOSTS = []
-
+if not DEBUG:
+    SECRET_KEY = os.environ['SECRET_KEY']
 
 # Application definition
 
@@ -82,14 +86,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
 
 STATIC_URL = '/static/'
-
-BROKER_URL = 'amqp://guest:guest@localhost:5672//'
-
-# List of modules to import when celery starts.
-
-## Using the database to store task state and results.
-CELERY_RESULT_BACKEND = 'amqp'
-
 
 ZMQ_PROTO = 'tcp://'
 ZMQ_HOST = '127.0.0.1'

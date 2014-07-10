@@ -1,10 +1,10 @@
-var chatmain = function(chatWindowEl, chatInputEl, keyEl, roomEl, aliasEl){
+var chatmain = function(chatWindowEl, chatInputEl, keyEl, roomEl, aliasEl, updateButton){
     var JsonFormatter = {
-        stringify: function (cipherParams) {
+        stringify: function(cipherParams){
             var jsonObj = {
                 ciphertext: cipherParams.ciphertext.toString(CryptoJS.enc.Base64)
             };
-            if (cipherParams.iv) {
+            if(cipherParams.iv){
                 jsonObj.iv = cipherParams.iv.toString();
             }
             if (cipherParams.salt) {
@@ -12,14 +12,14 @@ var chatmain = function(chatWindowEl, chatInputEl, keyEl, roomEl, aliasEl){
             }
             return jsonObj;
         },
-        parse: function (jsonObj) {
+        parse: function(jsonObj){
             var cipherParams = CryptoJS.lib.CipherParams.create({
                 ciphertext: CryptoJS.enc.Base64.parse(jsonObj.ciphertext)
             });
-            if (jsonObj.iv) {
+            if(jsonObj.iv){
                 cipherParams.iv = CryptoJS.enc.Hex.parse(jsonObj.iv)
             }
-            if (jsonObj.salt) {
+            if(jsonObj.salt){
                 cipherParams.salt = CryptoJS.enc.Hex.parse(jsonObj.salt)
             }
             return cipherParams;
@@ -37,28 +37,24 @@ var chatmain = function(chatWindowEl, chatInputEl, keyEl, roomEl, aliasEl){
     var key;
     self.display = $(chatWindowEl);
     self.input = $(chatInputEl);
-    self.roomName = $(roomEl).val();
-    self.roomName = "hut2";
-    key = $(keyEl).val();
-    key = "password";
-    self.alias = $(aliasEl).val();
-    self.alias = 'Dragon';
+    self.roomName = "";
+    key = "";
+    self.alias = "";
     
-    self.backOff = 0; //used for backoff after request failure
-    self.timeout = 5;
+    self.backOff = 0;   //used for backoff after request failure
+    self.timeout = 50;  //This might need tweaking, an Amazon ELB will timeout at 60seconds which seems to among the lowest around.
     self.crypt = function(plaintext){
         /*Takes an abitrary plaintext and encrypts it.  
         Returns an object with 'ciphertext', 'iv' and 'salt' indexes suitable 
         for decryption with self.decrypt()
         */
         var crypt = CryptoJS.AES.encrypt(self.alias + ':' + plaintext, key);
-        console.log();
         return JsonFormatter.stringify(crypt);
     };
     
     self.decrypt = function(msg){
         //given an object with with 'ciphertext', 'iv' and 'salt' indexes its plaintext
-        if(key == null){
+        if(key == null || key.length == 0){
             alert("Please enter your secret passphrase");
         }
         else{
@@ -83,6 +79,7 @@ var chatmain = function(chatWindowEl, chatInputEl, keyEl, roomEl, aliasEl){
     self.input.keyup(function(event){
         if(event.which == 13 && !event.shiftKey){
             var text = self.input.val();
+            
             if(text.length){
                 self.submit(text);
                 self.input.val('');
@@ -90,6 +87,15 @@ var chatmain = function(chatWindowEl, chatInputEl, keyEl, roomEl, aliasEl){
             event.preventDefault();
         }
     });
+    
+    $(updateButton).click(function(btn){
+        self.alias = $(aliasEl).val();
+        self.roomName = $(roomEl).val();
+        key = $(keyEl).val();
+        $(keyEl).val('');
+        btn.preventDefault();
+    });
+    
     
     self.displayMessage = function(msg){
         if(msg != null){
@@ -99,10 +105,15 @@ var chatmain = function(chatWindowEl, chatInputEl, keyEl, roomEl, aliasEl){
             }else
                 self.display.append('<p><strong>' + escapeHTML(msg.alias) + ':</strong>' + escapeHTML(msg.text) + '</p>');
         }
-            
     };
 
     self.submit = function(msg){
+        if(key == null || key.length == 0){
+            return alert("Please enter your secret passphrase");
+        }
+        if(self.roomName == null || self.roomName.length == 0){
+            return alert("Please enter your a room");
+        }        
         $.ajax({
 		    type: "POST",
             data: {request:
@@ -140,7 +151,6 @@ var chatmain = function(chatWindowEl, chatInputEl, keyEl, roomEl, aliasEl){
 	}
 	
     self.waitUpdate = function(){
-        console.log('waitUpdate');
         $.ajax({
 		    type: "POST",
             data: {

@@ -1,19 +1,17 @@
 {% load staticfiles %}
 <!DOCTYPE html>
 <html>
-    <head>
-        {% block head %}
+    <head>{% block head %}
         <meta charset="utf-8"/>
         <!--[if lt IE 9]><script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7/html5shiv.js"></script><![endif]-->
         {% block stylesheets %}
-            <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.0.3/css/bootstrap.css">
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.0.3/css/bootstrap.css">
         {% endblock %}
         <title>{% block title %}Chat{% endblock %}</title>
         {% endblock %}
     </head>
     <body>
-        
-        
+    <button class="btn" style="float:right;" id="hidePrefsButton">Toggle prefs</button>
     <div class="container">
     {% if messages %}
         {% for message in messages %}
@@ -24,51 +22,55 @@
         {% endfor %}
     {% endif %}
     {% block body %}
-        <form role="form">
+        <div class="form-inline" id="prefsPanel">
             <div class="form-group">
-                <label for="key">Enter a <em>strong</em> passphrase</label>
-                <input  class="form-control" id="key" type="password" placeholder="correct horse battery staple">
+                <label class="sr-only" for="key"><strong><em>Strong</em></strong> passphrase</label>
+                <input  class="form-control" id="key" type="password" placeholder="Strong Passphrase">
             </div>
             <div class="form-group">
-                <label for="room">Choose your chatoom name</label>
-                <input  class="form-control" id="room" placeholder="Hut 2">
+                <label class="sr-only" for="room">Chatroom</label>
+                <input  class="form-control" id="room" placeholder="Chatroom Name">
             </div>
             <div class="form-group">
-                <label for="alias">Choose your Alias</label>
-                <input  class="form-control" id="alias" placeholder="NightHawk">
+                <label class="sr-only" for="alias">Your Alias</label>
+                <input  class="form-control" id="alias" placeholder="Your Alias">
             </div>
-        </form>
-            <!-- body -->
-        <ul id="activeusers"></ul>
+            <button class="btn btn-default" id="updatePrefsButton">Update</button>
+        </div>
+        <div class="container">
         <div class="highlight" id="chatWindow">
         <!--messages appear here -->
-        
-            
+        </div>
         </div>
         <div class="well">
-            <textarea type="text" class="form-control" placeholder="Text input" id="chatInput"></textarea>
+            <textarea class="form-control" placeholder="Text input" id="chatInput"></textarea>
         </div>
     {% endblock %}
     </div>
-        
-        
-        <footer class="footer">
-        {% block footer %}
-                <!-- footer block -->
-        {% endblock %}
-
-        {% block scripts %}
-            <script src="//crypto-js.googlecode.com/svn/tags/3.1.2/build/rollups/aes.js"></script>
-            <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
-            <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
-            <script src="{% static 'js/app.js' %}"></script>
-            <script> 
-            $(document).ready(function(){
-                chatapp = chatmain('#chatWindow', '#chatInput', '#key', '#room', '#alias');
-                }
-            );
-            </script>
-        {% endblock %}
-        </footer>
+    <noscript>
+        Due to the nature of this site(client-side encryption), Javascript is required to function.
+    </noscript>
+    <footer class="footer">
+    {% block footer %}
+            <!-- footer block -->
+    {% endblock %}
+    {% block scripts %}
+        <script src="//crypto-js.googlecode.com/svn/tags/3.1.2/build/rollups/aes.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+        <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.3/js/bootstrap.min.js"></script>
+        <script src="{% static 'js/app.js' %}"></script>
+        <script> 
+        $(document).ready(function(){
+            $('#hidePrefsButton').click(function(){
+                outer = this;
+                $('#prefsPanel').slideToggle();
+            });
+            chatapp = chatmain('#chatWindow', '#chatInput', '#key', '#room', '#alias', '#updatePrefsButton');
+            }
+        );
+        </script>
+    {% endblock %}
+</footer>
     </body>
+
 </html>
