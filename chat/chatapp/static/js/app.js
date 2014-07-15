@@ -110,13 +110,15 @@ var chatmain = function(chatWindowEl, chatInputEl, keyEl, roomEl, aliasEl, updat
         if(self.lastAjaxRequest != null){
             self.lastAjaxRequest.abort();
         }
+        else{
+            self.waitUpdate();
+        }
         if(key == null || key.length == 0){
             return alert("Please enter your secret passphrase");
         }
         if(self.roomName == null || self.roomName.length == 0){
             return alert("Please enter your room name");
         }
-        self.waitUpdate();
     });
 
     self.displayMessage = function(msg){
