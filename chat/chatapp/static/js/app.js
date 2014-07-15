@@ -130,6 +130,12 @@ var chatmain = function(chatWindowEl, chatInputEl, keyEl, roomEl, aliasEl, updat
     };
 
     self.submit = function(msg){
+        if(key == null || key.length == 0){
+            return alert("Please enter your secret passphrase");
+        }
+        if(self.roomName == null || self.roomName.length == 0){
+            return alert("Please enter your room name");
+        }
         $.ajax({
 		    type: "POST",
             data: {request:
