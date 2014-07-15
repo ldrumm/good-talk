@@ -21,8 +21,8 @@ SECRET_KEY = '-t-sz^gfgs3zc1-1&okrj%bdq!hm$rcby7f5zwbj2#p=waiq&u'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 try:
-    DEBUG = not os.environ['DEBUG'] == 'False'
-except:
+    DEBUG = not (os.environ.get('DEBUG') == 'False')
+except KeyError:
     DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
@@ -87,9 +87,13 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-ZMQ_PROTO = 'tcp://'
-ZMQ_HOST = '127.0.0.1'
-ZMQ_PORT = 5555
+ZMQ_PUB_ADDRESS = 'ipc://' + os.path.join(os.path.dirname(__file__), 'zmq_pub.sock')
+ZMQ_SUB_ADDRESS = 'ipc://' + os.path.join(os.path.dirname(__file__), 'zmq_sub.sock')
 
-ZMQ_PUB_ADDRESS = "%s%s:%s" % (ZMQ_PROTO, ZMQ_HOST, ZMQ_PORT)
-ZMQ_SUB_ADDRESS = "%s%s:%s" % (ZMQ_PROTO, ZMQ_HOST, ZMQ_PORT+1)
+
+if not DEBUG:
+    INSTALLED_APPS = INSTALLED_APPS + (
+        'raven.contrib.django.raven_compat',
+    )
+
+    from settings_production import *
