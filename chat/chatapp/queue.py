@@ -1,7 +1,11 @@
+import Queue
+
 import gevent
 import zmq.green as zmq
+
 from django.conf import settings
-import Queue
+from django.utils.encoding import force_bytes
+
 
 __all__ = ['Broadcaster', 'runserver', 'wait_message', 'send_message']
 
@@ -56,7 +60,7 @@ def wait_message(subscriber='', block=True, timeout=10):
 
     socket = context.socket(zmq.SUB)
     socket.connect(settings.ZMQ_PUB_ADDRESS)
-    socket.setsockopt(zmq.SUBSCRIBE, bytes(subscriber))
+    socket.setsockopt(zmq.SUBSCRIBE, force_bytes(subscriber))
     try:
         c = gevent.spawn(socket.recv_multipart)
         return c.get(block, timeout)
@@ -72,7 +76,7 @@ def send_message(subscriber='', message=''):
     
     socket = context.socket(zmq.XREQ)
     socket.connect(settings.ZMQ_SUB_ADDRESS)
-    socket.send_multipart([bytes(subscriber), bytes(message)])
+    socket.send_multipart([force_bytes(subscriber), force_bytes(message)])
     
     socket.close()
     context.destroy()

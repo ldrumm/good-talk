@@ -1,6 +1,11 @@
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import (
+    HttpResponse,
+    HttpResponseForbidden,
+    HttpResponseBadRequest
+)
+from django.core.exceptions import SuspiciousOperation
 
 import simplejson
 
@@ -10,7 +15,10 @@ class JSONResponse(HttpResponse):
     def __init__(self, content, *args, **kwargs):
         content = simplejson.dumps(content)
         kwargs['content_type'] = 'application/json'
-        super(JSONResponse, self).__init__(content, *args, **kwargs)
+        return  super(JSONResponse, self).__init__(content, *args, **kwargs)
+
+class JSONResponseBadRequest(JSONResponse, HttpResponseBadRequest):
+    pass
 
 @csrf_exempt
 def home(request, *args, **kwargs):
@@ -20,21 +28,29 @@ def home(request, *args, **kwargs):
 
 def ajax_handler(request, *args, **kwargs):
     try:
-        d = simplejson.loads(request.POST.get('request'))
+        json_request = simplejson.loads(request.POST.get('request'))
     except simplejson.JSONDecodeError:
         return HttpResponseForbidden()
     try:
-        subscriber = d['subscriber']
+        subscriber = json_request['subscriber']
     except KeyError:
         return HttpResponseForbidden()
-    timeout = d.get('timeout', 30)
-    data = d.get('data')
-    
-    if d.get('command') == 'submit':
+
+    if not subscriber:
+        return JSONResponseBadRequest({'success': False})
+
+    timeout = json_request.get('timeout', 30)
+    data = json_request.get('data')
+    command = json_request.get('command')
+
+    if command not in ('submit', 'update'):
+        return JSONResponseBadRequest({'success': False, 'error': "unknown command"})
+
+    if command == 'submit':
         queue.send_message(subscriber=subscriber, message=simplejson.dumps(data))
         return JSONResponse({'success': True})
-    
-    if d.get('command') == 'update':
+
+    if command == 'update':
         try:
             resp = queue.wait_message(subscriber=subscriber, block=True, timeout=timeout)
             if resp[0] != subscriber:
