@@ -25,14 +25,24 @@ var chatmain = function(chatWindowEl, chatInputEl, keyEl, roomEl, aliasEl, updat
             return cipherParams;
         }
     };
-    var escapeHTML = function(str) { 
+
+    var formatLines = function(str){
         return str.replace(
-            /([&<>])/g, 
-            function (c){
-                return "&" + {"&": "amp","<": "lt",">": "gt"}[c] + ";";
+            /([\n\r])/g, function(c){
+                return "<br/>";
             }
-        ); 
+        );
     };
+
+    var escapeHTML = function(str) {
+        return formatLines(str.replace(
+            /([&<> ])/g,
+            function (c){
+                return "&" + {"&":"amp","<":"lt",">":"gt"," ":"nbsp"}[c] + ";";
+            }
+        ));
+    };
+
     var self = {};
     var key;
     self.display = $(chatWindowEl);
@@ -40,46 +50,49 @@ var chatmain = function(chatWindowEl, chatInputEl, keyEl, roomEl, aliasEl, updat
     self.roomName = "";
     key = "";
     self.alias = "";
-    
-    self.backOff = 0;   //used for backoff after request failure
-    self.timeout = 50;  //This might need tweaking, an Amazon ELB will timeout at 60seconds which seems to among the lowest around.
+    self.lastAjaxRequest = null
+    //used for exponential backoff after request failure
+    self.backOff = 0;
+
+    /*This might need tweaking for efficiency: An Amazon ELB will timeout at
+    60s which seems to among the lowest default around.*/
+    self.timeout = 50;
+
     self.crypt = function(plaintext){
-        /*Takes an abitrary plaintext and encrypts it.  
-        Returns an object with 'ciphertext', 'iv' and 'salt' indexes suitable 
+        /*Takes an abitrary plaintext and encrypts it.
+        Returns an object with 'ciphertext', 'iv' and 'salt' indexes suitable
         for decryption with self.decrypt()
         */
         var crypt = CryptoJS.AES.encrypt(self.alias + ':' + plaintext, key);
         return JsonFormatter.stringify(crypt);
     };
-    
+
     self.decrypt = function(msg){
         //given an object with with 'ciphertext', 'iv' and 'salt' indexes its plaintext
         if(key == null || key.length == 0){
-            alert("Please enter your secret passphrase");
+            return alert("Please enter your secret passphrase");
         }
-        else{
-            var crypto = JsonFormatter.parse(msg);
-            var plaintext = CryptoJS.AES.decrypt(
-                crypto, 
-                key,
-                {iv:crypto.iv, salt:crypto.salt}
-            );
-            plaintext = CryptoJS.enc.Utf8.stringify(plaintext);
-            if (plaintext.toString().length == 0){
-                return null;
-            }
-                
-            return {
-                alias:plaintext.split(':')[0],
-                text:plaintext.slice(plaintext.indexOf(':') + 1)
-            };
+        var crypto = JsonFormatter.parse(msg);
+        var plaintext = CryptoJS.AES.decrypt(
+            crypto,
+            key,
+            {iv:crypto.iv, salt:crypto.salt}
+        );
+        plaintext = CryptoJS.enc.Utf8.stringify(plaintext);
+        if (plaintext.toString().length == 0){
+            return null;
         }
+
+        return {
+            alias:plaintext.split(':')[0],
+            text:plaintext.slice(plaintext.indexOf(':') + 1)
+        };
     };
 
     self.input.keyup(function(event){
         if(event.which == 13 && !event.shiftKey){
             var text = self.input.val();
-            
+
             if(text.length){
                 self.submit(text);
                 self.input.val('');
@@ -87,33 +100,36 @@ var chatmain = function(chatWindowEl, chatInputEl, keyEl, roomEl, aliasEl, updat
             event.preventDefault();
         }
     });
-    
+
     $(updateButton).click(function(btn){
         self.alias = $(aliasEl).val();
         self.roomName = $(roomEl).val();
         key = $(keyEl).val();
         $(keyEl).val('');
         btn.preventDefault();
+        if(self.lastAjaxRequest != null){
+            self.lastAjaxRequest.abort();
+        }
+        if(key == null || key.length == 0){
+            return alert("Please enter your secret passphrase");
+        }
+        if(self.roomName == null || self.roomName.length == 0){
+            return alert("Please enter your room name");
+        }
+        self.waitUpdate();
     });
-    
-    
+
     self.displayMessage = function(msg){
         if(msg != null){
             var msg = self.decrypt(msg);
             if(msg === null){
                 self.display.append('<p>*received undecodable message*</p>');
             }else
-                self.display.append('<p><strong>' + escapeHTML(msg.alias) + ':</strong>' + escapeHTML(msg.text) + '</p>');
+                self.display.append('<p><strong>' + escapeHTML(msg.alias) + ': </strong>' + escapeHTML(msg.text) + '</p>');
         }
     };
 
     self.submit = function(msg){
-        if(key == null || key.length == 0){
-            return alert("Please enter your secret passphrase");
-        }
-        if(self.roomName == null || self.roomName.length == 0){
-            return alert("Please enter your a room");
-        }        
         $.ajax({
 		    type: "POST",
             data: {request:
@@ -151,29 +167,25 @@ var chatmain = function(chatWindowEl, chatInputEl, keyEl, roomEl, aliasEl, updat
 	}
 	
     self.waitUpdate = function(){
-        $.ajax({
+       self.lastAjaxRequest = $.ajax({
 		    type: "POST",
             data: {
                 request: JSON.stringify({
-                    subscriber:self.roomName,
-                    command:'update',
-                    timeout:self.timeout
+                    subscriber: self.roomName,
+                    command: 'update',
+                    timeout: self.timeout
                 })
             },
 	        dataType: 'json'
 	   }).done(function(response, textStatus, jqXHR){
             console.log(response);
             self.displayMessage(response.data);
-            if(response.success||response.timeout){
+            if(response.success || response.timeout){
 	            self.success(self.waitUpdate);
 	         }
         }).fail(function(){
             self.failure(self.waitUpdate);
         });
     };
-    self.main = function(){
-        self.waitUpdate();
-    };
-    self.main();
     return self;
 }
