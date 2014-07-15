@@ -1,4 +1,5 @@
-import Queue
+from __future__ import absolute_import
+import six
 
 import gevent
 import zmq.green as zmq
@@ -6,6 +7,10 @@ import zmq.green as zmq
 from django.conf import settings
 from django.utils.encoding import force_bytes
 
+if six.PY3:
+    import queue
+else:
+    import Queue as queue
 
 __all__ = ['Broadcaster', 'runserver', 'wait_message', 'send_message']
 
@@ -19,7 +24,7 @@ class Broadcaster(object):
         #Socket to receive messages on so that a client can connect and broadcast to all listeners
         self.recv_sock = self.context.socket(zmq.ROUTER)
         self.recv_sock.bind(settings.ZMQ_SUB_ADDRESS)
-        self.quit_queue = Queue.Queue()
+        self.quit_queue = queue.Queue()
         self.worker = None
         
         self.poller = zmq.Poller()

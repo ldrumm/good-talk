@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.http import (
@@ -9,7 +10,7 @@ from django.core.exceptions import SuspiciousOperation
 
 import simplejson
 
-import queue
+from . import queue
 
 class JSONResponse(HttpResponse):
     def __init__(self, content, *args, **kwargs):

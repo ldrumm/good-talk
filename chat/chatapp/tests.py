@@ -1,7 +1,8 @@
+from __future__ import absolute_import
 from django.test import TestCase
 from django.test.client import RequestFactory
 # Create your tests here.
-from views import JSONResponse
+from .views import JSONResponse
 BASE_REQUEST_DICT = {'request':{
             "command":"submit",
             "subscriber":"",
@@ -53,7 +54,7 @@ class HttpClassTests(TestCase):
 
 class AJAXTests(TestCase):
     def test_bad_command_fails(self):
-        from views import ajax_handler
+        from .views import ajax_handler
         from django.utils.crypto import get_random_string
         bad_request = RequestFactory().post('/', {'request':'''{
             "command":"%s",
